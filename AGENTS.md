@@ -1,0 +1,91 @@
+# AGENTS.md
+
+Guidance for coding agents (Claude Code, Cursor, Copilot, …) working on
+this repository.
+
+## What this is
+
+`roadmap-cli` generates a `ROADMAP.md` from a `.roadmap/` directory of
+TOML-frontmatter feature files (one small markdown file per feature).
+The roadmap document is a **generated artifact**; `.roadmap/` is the
+source of truth. The binary is called `roadmap`; the library crate is
+`roadmap_cli`. See [README.md](README.md) for the file format and CLI
+usage.
+
+## Commands
+
+```bash
+cargo build                        # build the `roadmap` binary
+cargo test                         # all tests (unit + integration)
+cargo test --test validate         # one integration test file
+cargo test parse_minimal           # one test by name
+cargo fmt --check                  # formatting (rustfmt.toml is committed)
+cargo clippy --all-targets -- -D warnings
+
+cargo run -- generate              # run against ./.roadmap (see examples/)
+cargo run -- --root examples/.roadmap generate
+```
+
+Snapshot tests use `insta` (`tests/snapshots/`). After an intentional
+output change: `cargo insta review` (or `INSTA_UPDATE=always cargo test`),
+and commit the updated `.snap` files.
+
+MSRV is pinned in `Cargo.toml` (`rust-version = "1.80"`, edition 2021) —
+do not use newer language features without bumping it deliberately.
+
+## Architecture
+
+Single crate, two layers:
+
+- **`src/lib.rs`** — the pure core: `split_frontmatter` → `parse_feature`
+  → `sort_features` → `render`. Parsing and rendering take/return
+  strings so unit tests never touch the filesystem; only `load_config` /
+  `load_features` do I/O. Keep new logic in this string-in/string-out
+  style so it stays snapshot-testable.
+- **`src/main.rs`** — thin clap wiring only: parse args, call lib
+  functions, map results to exit codes (`0` ok, `1` validation failure,
+  `2` unexpected error). No domain logic here.
+
+Subcommand modules follow the same split:
+
+- **`src/add.rs`** — scaffolds a feature file. Returns an `AddOutcome`
+  instead of printing, so the lib never writes to stderr; `main.rs` owns
+  the user-facing warning text.
+- **`src/validate.rs`** — read-only. Collects *all* issues into a
+  `ValidationReport` rather than bailing on the first parse error.
+  Anchor drift is computed by regenerating in memory and diffing
+  `<a id="…">` anchors against the on-disk `ROADMAP.md`.
+- `rename` is declared in the CLI but is a stub (`bail!`) — not
+  implemented yet.
+
+## Design decisions to preserve
+
+- **Feature bodies stay unparsed `String`s.** A markdown parser would
+  round-trip poorly; the renderer only needs the first non-empty line
+  (the catalog Summary). Don't introduce a markdown AST.
+- **Output is deterministic.** `load_features` walks in filename order
+  and `sort_features` uses a total key (target bucket → status →
+  priority → id, then `shipped_order`). Any new emission must keep
+  regen byte-stable — there's a determinism test in
+  `tests/generate.rs`.
+- **`validate` silent-passes when `.roadmap/` is absent**
+  (`source_missing`), so the same recipe runs on checkouts without the
+  source tree (CI, worktrees). Don't turn that into an error.
+- **Slug rules live in `add::classify_slug`**: new features are
+  `f-<kebab-name>`; the legacy `f<digits>` shape needs
+  `--allow-legacy-numeric` and emits a deprecation warning. Anchors are
+  the lowercased feature id, which is why `validate` checks
+  case-insensitive anchor collisions on top of exact duplicate ids.
+- **No regex dependency.** Narrow fixed-shape scans (e.g.
+  `extract_anchors`) are hand-rolled deliberately.
+
+## Conventions
+
+- Tests that need a scratch dir use the `unique_tmp` pattern
+  (pid + atomic counter under `std::env::temp_dir()`) — copy it rather
+  than inventing another scheme.
+- Integration fixtures live in `tests/fixtures/<name>/` as a complete
+  `.roadmap/` tree; `examples/.roadmap/` is the user-facing sample.
+- Errors: `anyhow` with `.context(...)` naming the file being processed;
+  no `unwrap`/`expect` outside tests.
+- Markdown prose is linted with markdownlint; keep lines wrapped.
