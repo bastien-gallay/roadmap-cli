@@ -1,8 +1,11 @@
 +++
 id = "F-example-feature"
-topic = "Getting started"
+type = "feature"
+class = "enabler"
+effort = "S"
+area = ["core"]
+horizon = "next"
 status = "todo"
-priority = "next"
 target = ["v0.1"]
 +++
 

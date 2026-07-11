@@ -89,9 +89,10 @@ fn render_template(id: &str) -> String {
     format!(
         r#"+++
 id = "{id}"
-topic = "<TODO>"
+type = "feature"
+area = ["<TODO>"]
+horizon = "next"
 status = "todo"
-priority = "next"
 target = ["<TODO>"]
 +++
 

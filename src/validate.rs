@@ -4,7 +4,9 @@
 //! issues into a `ValidationReport` instead of bailing on the first
 //! parse error, so a single run surfaces every problem.
 
-use crate::{feature_md_paths, load_config, parse_feature, render, sort_features};
+use crate::{
+    feature_md_paths, load_config, parse_feature, render, sort_features, Config, Frontmatter,
+};
 use anyhow::{bail, Context, Result};
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -121,11 +123,16 @@ pub fn validate(root: &Path, roadmap_md: &Path) -> Result<ValidationReport> {
         return Ok(report);
     }
 
+    let config = load_config(root).context("loading config.toml")?;
+
     let mut features = Vec::new();
     for path in feature_md_paths(&features_dir)? {
         match std::fs::read_to_string(&path) {
             Ok(src) => match parse_feature(&src) {
-                Ok(f) => features.push(f),
+                Ok(f) => {
+                    check_feature_fields(&path, &f.frontmatter, &config, &mut report);
+                    features.push(f);
+                },
                 Err(e) => report.schema_errors.push(SchemaError {
                     path: path.clone(),
                     message: format!("{e:#}"),
@@ -175,7 +182,6 @@ pub fn validate(root: &Path, roadmap_md: &Path) -> Result<ValidationReport> {
         .with_context(|| format!("reading {}", roadmap_md.display()))?;
     let on_disk_anchors = extract_anchors(&on_disk);
 
-    let config = load_config(root).context("loading config.toml")?;
     let mut sorted = features;
     sort_features(&mut sorted, &config);
     let regen = render(&sorted, &config);
@@ -191,6 +197,49 @@ pub fn validate(root: &Path, roadmap_md: &Path) -> Result<ValidationReport> {
         .collect();
 
     Ok(report)
+}
+
+/// Config-driven per-feature schema checks: every declared field's value(s)
+/// must be in its allow-list, `required_when` conditionals must hold, and
+/// `area` must carry at least one value. One `SchemaError` per breach, in
+/// stable (`BTreeMap`) field order so runs are reproducible.
+fn check_feature_fields(
+    path: &Path,
+    fm: &Frontmatter,
+    config: &Config,
+    report: &mut ValidationReport,
+) {
+    let mut err = |message: String| {
+        report.schema_errors.push(SchemaError {
+            path: path.to_path_buf(),
+            message,
+        });
+    };
+    for (name, spec) in &config.fields {
+        // `None` = a field the generator doesn't model (config references
+        // something unknown) — skip rather than false-flag.
+        let Some(values) = fm.field_values(name) else {
+            continue;
+        };
+        if let Some(required_when) = &spec.required_when {
+            if let Some(want) = required_when.get("type") {
+                if &fm.item_type == want && values.is_empty() {
+                    err(format!("`{name}` is required when type = \"{want}\""));
+                }
+            }
+        }
+        for v in &values {
+            if !spec.values.iter().any(|allowed| allowed == v) {
+                err(format!(
+                    "unknown `{name}` value {v:?} (allowed: {})",
+                    spec.values.join(", ")
+                ));
+            }
+        }
+    }
+    if fm.area.is_empty() {
+        err("`area` must list at least one value".to_string());
+    }
 }
 
 /// Extract the contents of every `<a id="…">` in markdown.
@@ -268,5 +317,95 @@ mod tests {
         assert!(!r.is_clean());
         assert!(r.has_drift());
         assert!(!r.has_hard_errors());
+    }
+
+    fn fm(item_type: &str, class: Option<&str>, area: Vec<&str>, horizon: &str) -> Frontmatter {
+        Frontmatter {
+            id: "F-x".into(),
+            item_type: item_type.into(),
+            class: class.map(Into::into),
+            effort: None,
+            area: area.into_iter().map(Into::into).collect(),
+            horizon: horizon.into(),
+            status: crate::Status::Todo,
+            target: vec!["v0.2.x".into()],
+            severity: None,
+            shipped: crate::Shipped::default(),
+            shipped_order: None,
+        }
+    }
+
+    fn cfg_with_fields() -> Config {
+        use crate::FieldSpec;
+        let mut fields = std::collections::BTreeMap::new();
+        fields.insert(
+            "class".to_string(),
+            FieldSpec {
+                values: vec!["differentiator".into(), "enabler".into()],
+                multi: false,
+                required_when: Some(std::collections::HashMap::from([(
+                    "type".to_string(),
+                    "feature".to_string(),
+                )])),
+            },
+        );
+        fields.insert(
+            "area".to_string(),
+            FieldSpec {
+                values: vec!["rules".into(), "docs".into()],
+                multi: true,
+                required_when: None,
+            },
+        );
+        Config {
+            versions: vec!["v0.2.x".into()],
+            title: "T".into(),
+            source_note: None,
+            fields,
+        }
+    }
+
+    #[test]
+    fn field_check_flags_unknown_value() {
+        let mut r = ValidationReport::default();
+        let feature = fm("feature", Some("enabler"), vec!["nope"], "next");
+        check_feature_fields(Path::new("f.md"), &feature, &cfg_with_fields(), &mut r);
+        assert!(r
+            .schema_errors
+            .iter()
+            .any(|e| e.message.contains("unknown `area` value \"nope\"")));
+    }
+
+    #[test]
+    fn field_check_requires_class_for_features() {
+        let mut r = ValidationReport::default();
+        let feature = fm("feature", None, vec!["rules"], "next");
+        check_feature_fields(Path::new("f.md"), &feature, &cfg_with_fields(), &mut r);
+        assert!(r.schema_errors.iter().any(|e| e
+            .message
+            .contains("`class` is required when type = \"feature\"")));
+    }
+
+    #[test]
+    fn field_check_allows_missing_class_for_non_features() {
+        let mut r = ValidationReport::default();
+        let feature = fm("chore", None, vec!["rules"], "next");
+        check_feature_fields(Path::new("f.md"), &feature, &cfg_with_fields(), &mut r);
+        assert!(
+            r.schema_errors.is_empty(),
+            "chore without class must pass: {:?}",
+            r.schema_errors
+        );
+    }
+
+    #[test]
+    fn field_check_flags_empty_area() {
+        let mut r = ValidationReport::default();
+        let feature = fm("feature", Some("enabler"), vec![], "next");
+        check_feature_fields(Path::new("f.md"), &feature, &cfg_with_fields(), &mut r);
+        assert!(r
+            .schema_errors
+            .iter()
+            .any(|e| e.message.contains("`area` must list at least one value")));
     }
 }

@@ -1,8 +1,9 @@
 +++
 id = "F-roadmap-toml-source"
-topic = "Architecture"
+type = "feature"
+area = ["arch"]
+horizon = "next"
 status = "todo"
-priority = "next"
 target = ["v0.2.x"]
 +++
 

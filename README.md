@@ -44,6 +44,29 @@ title = "My Project — Roadmap"
 # Optional note appended to the generated "DO NOT EDIT" banner —
 # e.g. a pointer to an ADR or design doc. Optional.
 source_note = "See docs/adr/roadmap-pipeline.md for the design."
+
+# Closed value-sets for the schema fields, owned by your project — the
+# generator stays taxonomy-neutral. `validate` enforces membership.
+[fields.type]
+values = ["feature", "fix", "chore"]
+
+[fields.class]
+values = ["differentiator", "enabler", "table-stakes", "polish", "bet"]
+required_when = { type = "feature" }   # class only on features
+
+[fields.effort]
+values = ["S", "M", "L"]
+
+[fields.area]
+values = ["core", "docs", "cli"]
+multi = true
+
+[fields.horizon]
+values = ["now", "next", "later", "parked", "shipped"]   # order = sort rank
+
+[fields.severity]
+values = ["critical", "major", "minor"]
+required_when = { type = "fix" }
 ```
 
 ### A feature file
@@ -54,14 +77,21 @@ markdown body whose first non-empty line becomes the catalog summary:
 ```markdown
 +++
 id = "F-my-feature"
-topic = "Architecture"
-status = "todo"    # wip | todo | done
-priority = "next"  # next | later | speculative | shipped
-target = ["v0.2"]  # first entry drives sort bucket
+type = "feature"        # feature | fix | chore
+class = "enabler"       # feature-only leverage (see [fields.class])
+effort = "M"            # S | M | L
+area = ["core", "cli"]  # multi-valued taxonomy
+horizon = "next"        # now | next | later | parked | shipped
+status = "todo"         # wip | todo | done
+target = ["v0.2"]       # first entry drives the sort bucket
 +++
 
 One-paragraph summary — the first non-empty line lands in the Summary column.
 ```
+
+Allowed values for `type`/`class`/`effort`/`area`/`horizon`/`severity` are
+declared per-project in `config.toml` `[fields.*]` (above), not hardcoded in
+the tool — so `roadmap` stays reusable across projects.
 
 ## Commands
 
@@ -77,7 +107,8 @@ roadmap add f-my-feature        # scaffold a new feature file
 
 Read-only. Reports:
 
-- **schema errors** — malformed frontmatter (does not abort on the first one)
+- **schema errors** — malformed frontmatter, unknown field values, or a
+  missing `required_when` field (does not abort on the first one)
 - **duplicate ids** / **anchor collisions** — two features that would
   produce the same `<a id="…">` anchor
 - **anchor drift** — anchors in the committed `ROADMAP.md` that a fresh

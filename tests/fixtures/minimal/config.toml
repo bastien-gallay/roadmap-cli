@@ -1,3 +1,13 @@
 versions = ["v0.2.x", "v0.3", "v0.4"]
 title = "Demo Project — Roadmap"
 source_note = "See docs/adr for the source-of-truth pipeline."
+
+[fields.type]
+values = ["feature", "fix", "chore"]
+
+[fields.horizon]
+values = ["now", "next", "later", "parked", "shipped"]
+
+[fields.area]
+values = ["arch", "adoption", "rules"]
+multi = true

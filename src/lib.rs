@@ -8,7 +8,7 @@ pub mod validate;
 
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 /// One feature: TOML frontmatter + raw markdown body.
@@ -22,13 +22,35 @@ pub struct Feature {
     pub body: String,
 }
 
+/// Schema v2 frontmatter. Two orthogonal axes replace the old flat
+/// `priority`: `class` (kind of leverage) and `effort`. The taxonomy
+/// (`area`) is multi-valued. Allowed values for `type`/`class`/`effort`/
+/// `area`/`horizon`/`severity` are **not** hardcoded here — they are
+/// declared per-project in `config.toml` `[fields.*]` and enforced by
+/// `validate`, so this generator stays reusable across projects.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Frontmatter {
     pub id: String,
-    pub topic: String,
+    /// `feature | fix | chore`. Only features carry a `class`; only
+    /// fixes carry a `severity`. `type` is a Rust keyword → renamed.
+    #[serde(rename = "type")]
+    pub item_type: String,
+    /// Kind of leverage (feature-only): differentiator/enabler/… .
+    #[serde(default)]
+    pub class: Option<String>,
+    /// S / M / L. Optional during migration (backfilled by triage).
+    #[serde(default)]
+    pub effort: Option<String>,
+    /// Multi-valued taxonomy (renamed from the old single `topic`).
+    pub area: Vec<String>,
+    /// Ordering horizon (renamed from the old `priority`). Sort rank
+    /// comes from the declared order of `[fields.horizon].values`.
+    pub horizon: String,
     pub status: Status,
-    pub priority: Priority,
     pub target: Vec<String>,
+    /// Fix-only severity: critical/major/minor.
+    #[serde(default)]
+    pub severity: Option<String>,
     #[serde(default)]
     pub shipped: Shipped,
     /// Stable position within the "shipped" tier — set at flip-time
@@ -36,6 +58,27 @@ pub struct Frontmatter {
     /// Optional; only required once the catalog includes shipped entries.
     #[serde(default)]
     pub shipped_order: Option<u32>,
+}
+
+impl Frontmatter {
+    /// Values a named schema field currently holds, for config-driven
+    /// validation. `None` = this generator does not model a field of that
+    /// name (config references something unknown → the caller skips it).
+    /// `Some(vec)` = the present values (empty when an optional field is
+    /// unset), so the caller can enforce `required_when` and membership.
+    pub fn field_values(&self, name: &str) -> Option<Vec<String>> {
+        let one = |s: &str| vec![s.to_string()];
+        let opt = |o: &Option<String>| o.iter().cloned().collect::<Vec<_>>();
+        match name {
+            "type" => Some(one(&self.item_type)),
+            "class" => Some(opt(&self.class)),
+            "effort" => Some(opt(&self.effort)),
+            "area" => Some(self.area.clone()),
+            "horizon" => Some(one(&self.horizon)),
+            "severity" => Some(opt(&self.severity)),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -64,26 +107,6 @@ impl Status {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Priority {
-    Next,
-    Later,
-    Speculative,
-    Shipped,
-}
-
-impl Priority {
-    const fn rank(self) -> u8 {
-        match self {
-            Self::Next => 0,
-            Self::Later => 1,
-            Self::Speculative => 2,
-            Self::Shipped => 3,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 pub struct Shipped {
     #[serde(default)]
@@ -106,6 +129,26 @@ pub struct Config {
     /// "DO NOT EDIT" banner — e.g. a pointer to an ADR or design doc.
     #[serde(default)]
     pub source_note: Option<String>,
+    /// Per-field allowed-value declarations, keyed by field name
+    /// (`type`, `class`, `effort`, `area`, `horizon`, `severity`).
+    /// `BTreeMap` so validation errors emit in a stable order.
+    #[serde(default)]
+    pub fields: BTreeMap<String, FieldSpec>,
+}
+
+/// Declares the allowed values (and shape) of one schema field, so the
+/// project — not this binary — owns its taxonomy.
+#[derive(Debug, Clone, Deserialize)]
+pub struct FieldSpec {
+    /// The closed set of accepted values.
+    pub values: Vec<String>,
+    /// Whether the frontmatter field is an array (e.g. `area`).
+    #[serde(default)]
+    pub multi: bool,
+    /// Conditional presence: e.g. `{ type = "feature" }` makes the field
+    /// required only when the feature's `type` equals `"feature"`.
+    #[serde(default)]
+    pub required_when: Option<HashMap<String, String>>,
 }
 
 fn default_title() -> String {
@@ -148,42 +191,62 @@ pub fn parse_feature(src: &str) -> Result<Feature> {
     })
 }
 
-/// Sort key: target[0] (via config bucket order) → status → priority →
-/// shipped_order → id.
+/// Sort key: target[0] (via config bucket order) → status → horizon
+/// (via config `[fields.horizon]` order) → shipped_order → id.
 ///
 /// `shipped_order` (set at flip-time so historical order survives regen)
 /// must sit *before* `id` in the key: `id` is unique, so any tiebreak
 /// placed after it would never run. Features without a `shipped_order`
 /// sort last within their tier (via `u32::MAX`), then break ties by `id`.
-/// Unknown targets sort last; missing target arrays are an upstream
-/// schema error caught at parse time.
+/// Unknown targets and unknown horizons sort last; missing target arrays
+/// are an upstream schema error caught at parse time.
 fn sort_key<'a>(
     f: &'a Feature,
     version_index: &HashMap<&str, usize>,
-) -> (usize, u8, u8, u32, &'a str) {
+    horizon_index: &HashMap<&str, usize>,
+) -> (usize, u8, usize, u32, &'a str) {
     let target_idx = f
         .frontmatter
         .target
         .first()
         .and_then(|t| version_index.get(t.as_str()).copied())
         .unwrap_or(usize::MAX);
+    let horizon_idx = horizon_index
+        .get(f.frontmatter.horizon.as_str())
+        .copied()
+        .unwrap_or(usize::MAX);
     (
         target_idx,
         f.frontmatter.status.rank(),
-        f.frontmatter.priority.rank(),
+        horizon_idx,
         f.frontmatter.shipped_order.unwrap_or(u32::MAX),
         &f.frontmatter.id,
     )
 }
 
-pub fn sort_features(features: &mut [Feature], config: &Config) {
-    let version_index: HashMap<&str, usize> = config
-        .versions
+/// Build a value → declaration-order index for stable ranking.
+fn index_of(values: &[String]) -> HashMap<&str, usize> {
+    values
         .iter()
         .enumerate()
         .map(|(i, v)| (v.as_str(), i))
-        .collect();
-    features.sort_by(|a, b| sort_key(a, &version_index).cmp(&sort_key(b, &version_index)));
+        .collect()
+}
+
+pub fn sort_features(features: &mut [Feature], config: &Config) {
+    let version_index = index_of(&config.versions);
+    let horizon_index = config
+        .fields
+        .get("horizon")
+        .map(|s| index_of(&s.values))
+        .unwrap_or_default();
+    features.sort_by(|a, b| {
+        sort_key(a, &version_index, &horizon_index).cmp(&sort_key(
+            b,
+            &version_index,
+            &horizon_index,
+        ))
+    });
 }
 
 /// First non-empty line of the body, used as the catalog summary.
@@ -221,17 +284,18 @@ pub fn render(features: &[Feature], config: &Config) -> String {
     }
     out.push_str(" -->\n\n");
     out.push_str("## Feature catalog\n\n");
-    out.push_str("| ID | Topic | Status | Target | Summary |\n");
+    out.push_str("| ID | Area | Status | Target | Summary |\n");
     out.push_str("|---|---|---|---|---|\n");
     for f in features {
         let fm = &f.frontmatter;
         let aid = anchor_id(&fm.id);
         let target = fm.target.join(" → ");
+        let area = fm.area.join(", ");
         let _ = writeln!(
             out,
-            "| <a id=\"{aid}\"></a>[{id}](#{aid}) | {topic} | {status} | {target} | {summary} |",
+            "| <a id=\"{aid}\"></a>[{id}](#{aid}) | {area} | {status} | {target} | {summary} |",
             id = fm.id,
-            topic = escape_cell(&fm.topic),
+            area = escape_cell(&area),
             status = fm.status.glyph(),
             target = escape_cell(&target),
             summary = escape_cell(summary(&f.body)),
@@ -289,21 +353,38 @@ mod tests {
     use super::*;
 
     fn cfg() -> Config {
+        let mut fields = BTreeMap::new();
+        fields.insert(
+            "horizon".to_string(),
+            FieldSpec {
+                values: ["now", "next", "later", "parked", "shipped"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+                multi: false,
+                required_when: None,
+            },
+        );
         Config {
             versions: vec!["v0.2.x".into(), "v0.3".into(), "v0.4".into()],
             title: "Roadmap".into(),
             source_note: None,
+            fields,
         }
     }
 
-    fn feat(id: &str, status: Status, priority: Priority, target: &str) -> Feature {
+    fn feat(id: &str, status: Status, horizon: &str, target: &str) -> Feature {
         Feature {
             frontmatter: Frontmatter {
                 id: id.into(),
-                topic: "Test".into(),
+                item_type: "feature".into(),
+                class: None,
+                effort: None,
+                area: vec!["arch".into()],
+                horizon: horizon.into(),
                 status,
-                priority,
                 target: vec![target.into()],
+                severity: None,
                 shipped: Shipped::default(),
                 shipped_order: None,
             },
@@ -323,13 +404,17 @@ mod tests {
     fn parse_minimal() {
         let src = "+++\n\
 id = \"F-foo\"\n\
-topic = \"Architecture\"\n\
+type = \"feature\"\n\
+area = [\"arch\"]\n\
+horizon = \"next\"\n\
 status = \"todo\"\n\
-priority = \"next\"\n\
 target = [\"v0.2.x\"]\n\
 +++\n\nThe summary.\n";
         let f = parse_feature(src).unwrap();
         assert_eq!(f.frontmatter.id, "F-foo");
+        assert_eq!(f.frontmatter.item_type, "feature");
+        assert_eq!(f.frontmatter.area, vec!["arch".to_string()]);
+        assert_eq!(f.frontmatter.horizon, "next");
         assert_eq!(f.frontmatter.status, Status::Todo);
         assert_eq!(f.body, "The summary.\n");
     }
@@ -338,9 +423,10 @@ target = [\"v0.2.x\"]\n\
     fn parse_accepts_crlf_line_endings() {
         let src = "+++\r\n\
 id = \"F-foo\"\r\n\
-topic = \"Architecture\"\r\n\
+type = \"feature\"\r\n\
+area = [\"arch\"]\r\n\
+horizon = \"next\"\r\n\
 status = \"todo\"\r\n\
-priority = \"next\"\r\n\
 target = [\"v0.2.x\"]\r\n\
 +++\r\n\r\nThe summary.\r\n";
         let f = parse_feature(src).unwrap();
@@ -349,12 +435,12 @@ target = [\"v0.2.x\"]\r\n\
     }
 
     #[test]
-    fn sort_target_then_status_then_priority_then_id() {
+    fn sort_target_then_status_then_horizon_then_id() {
         let mut fs = vec![
-            feat("f-z", Status::Todo, Priority::Next, "v0.3"),
-            feat("f-a", Status::Todo, Priority::Next, "v0.2.x"),
-            feat("f-b", Status::Wip, Priority::Next, "v0.2.x"),
-            feat("f-c", Status::Todo, Priority::Later, "v0.2.x"),
+            feat("f-z", Status::Todo, "next", "v0.3"),
+            feat("f-a", Status::Todo, "next", "v0.2.x"),
+            feat("f-b", Status::Wip, "next", "v0.2.x"),
+            feat("f-c", Status::Todo, "later", "v0.2.x"),
         ];
         sort_features(&mut fs, &cfg());
         let ids: Vec<&str> = fs.iter().map(|f| f.frontmatter.id.as_str()).collect();
@@ -372,6 +458,27 @@ target = [\"v0.2.x\"]\r\n\
         let config: Config = toml::from_str("versions = [\"v1\"]\n").unwrap();
         assert_eq!(config.title, "Roadmap");
         assert!(config.source_note.is_none());
+        assert!(config.fields.is_empty());
+    }
+
+    #[test]
+    fn fields_parse_from_config() {
+        let src = "versions = [\"v1\"]\n\
+[fields.class]\n\
+values = [\"differentiator\", \"enabler\"]\n\
+[fields.area]\n\
+values = [\"rules\", \"docs\"]\n\
+multi = true\n\
+[fields.class.required_when]\n\
+type = \"feature\"\n";
+        let config: Config = toml::from_str(src).unwrap();
+        assert_eq!(config.fields["area"].values, vec!["rules", "docs"]);
+        assert!(config.fields["area"].multi);
+        assert!(!config.fields["class"].multi);
+        assert_eq!(
+            config.fields["class"].required_when.as_ref().unwrap()["type"],
+            "feature"
+        );
     }
 
     #[test]
@@ -380,6 +487,7 @@ target = [\"v0.2.x\"]\r\n\
             versions: vec!["v1".into()],
             title: "My Project — Roadmap".into(),
             source_note: Some("See docs/adr.".into()),
+            fields: BTreeMap::new(),
         };
         let out = render(&[], &config);
         assert!(out.starts_with("# My Project — Roadmap\n\n"));
@@ -389,13 +497,13 @@ target = [\"v0.2.x\"]\r\n\
 
     #[test]
     fn shipped_order_breaks_ties_before_id() {
-        // Same target/status/priority, distinct ids — the alphabetically
+        // Same target/status/horizon, distinct ids — the alphabetically
         // later id (f-zeta) must still sort first because its shipped_order
         // is lower. Regression guard: this only works when shipped_order
         // sits before id in the sort key.
-        let mut a = feat("f-alpha", Status::Done, Priority::Shipped, "v0.2.x");
+        let mut a = feat("f-alpha", Status::Done, "shipped", "v0.2.x");
         a.frontmatter.shipped_order = Some(3);
-        let mut z = feat("f-zeta", Status::Done, Priority::Shipped, "v0.2.x");
+        let mut z = feat("f-zeta", Status::Done, "shipped", "v0.2.x");
         z.frontmatter.shipped_order = Some(1);
         let mut fs = vec![a, z];
         sort_features(&mut fs, &cfg());
@@ -406,8 +514,8 @@ target = [\"v0.2.x\"]\r\n\
     #[test]
     fn features_without_shipped_order_fall_back_to_id() {
         let mut fs = vec![
-            feat("f-b", Status::Done, Priority::Shipped, "v0.2.x"),
-            feat("f-a", Status::Done, Priority::Shipped, "v0.2.x"),
+            feat("f-b", Status::Done, "shipped", "v0.2.x"),
+            feat("f-a", Status::Done, "shipped", "v0.2.x"),
         ];
         sort_features(&mut fs, &cfg());
         let ids: Vec<&str> = fs.iter().map(|f| f.frontmatter.id.as_str()).collect();
@@ -422,8 +530,8 @@ target = [\"v0.2.x\"]\r\n\
 
     #[test]
     fn render_escapes_pipe_in_free_text_columns() {
-        let mut f = feat("f-x", Status::Todo, Priority::Next, "v0.2.x");
-        f.frontmatter.topic = "CLI | TUI".into();
+        let mut f = feat("f-x", Status::Todo, "next", "v0.2.x");
+        f.frontmatter.area = vec!["CLI | TUI".into()];
         f.body = "Support `a | b` operator.".into();
         let out = render(&[f], &cfg());
         // The row must carry exactly the 5 intended column separators plus
@@ -438,6 +546,7 @@ target = [\"v0.2.x\"]\r\n\
             versions: vec!["v1".into()],
             title: "T".into(),
             source_note: Some("see foo --> bar".into()),
+            fields: BTreeMap::new(),
         };
         let out = render(&[], &config);
         // The only `-->` in the output is the banner's own closing fence.

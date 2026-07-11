@@ -6,3 +6,27 @@ title = "Example Project — Roadmap"
 
 # Optional note appended to the generated "DO NOT EDIT" banner. Optional.
 source_note = "Source of truth lives in .roadmap/; run `roadmap generate`."
+
+# Closed value-sets for the schema fields, owned by your project — the
+# generator stays taxonomy-neutral. `validate` enforces membership and the
+# `required_when` conditionals below.
+[fields.type]
+values = ["feature", "fix", "chore"]
+
+[fields.class]
+values = ["differentiator", "enabler", "table-stakes", "polish", "bet"]
+required_when = { type = "feature" }
+
+[fields.effort]
+values = ["S", "M", "L"]
+
+[fields.area]
+values = ["core", "docs", "cli"]
+multi = true
+
+[fields.horizon]
+values = ["now", "next", "later", "parked", "shipped"]
+
+[fields.severity]
+values = ["critical", "major", "minor"]
+required_when = { type = "fix" }

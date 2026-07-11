@@ -1,8 +1,9 @@
 +++
 id = "F-llm-plugin"
-topic = "Adoption channels"
+type = "feature"
+area = ["adoption"]
+horizon = "parked"
 status = "todo"
-priority = "speculative"
 target = ["v0.4"]
 +++
 
