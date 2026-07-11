@@ -1,0 +1,21 @@
+{
+  // Project docs: enforce 80-col prose, but don't fight tables / code blocks
+  // / anchor HTML.
+  "config": {
+    "MD013": { "line_length": 80, "tables": false, "code_blocks": false },
+    "MD033": false
+  },
+  // Lint every doc by default, so a bare `markdownlint-cli2` mirrors CI
+  // (whose action passes the same glob explicitly).
+  "globs": ["**/*.md"],
+  // CLAUDE.md is only an `@AGENTS.md` import pointer, not prose. Feature
+  // files (fixtures + examples) are frontmatter data whose body starts
+  // with a summary paragraph by design, not an H1.
+  "ignores": [
+    "target/**",
+    "node_modules/**",
+    "CLAUDE.md",
+    "examples/.roadmap/features/**",
+    "tests/fixtures/**"
+  ]
+}

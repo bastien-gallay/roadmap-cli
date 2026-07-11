@@ -1,0 +1,189 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel superseded PR runs; never cancel a push→main run (baseline on record).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUSTFLAGS: "-D warnings"
+
+# Third-party actions are pinned to commit SHAs (version in the trailing
+# comment). Bump the SHA and the comment together; never use a mutable tag.
+jobs:
+  # Which kinds of file changed, so each gate runs only when relevant. A
+  # path-skipped job reports `skipped`, which the `ci-success` aggregator
+  # treats as passing — so a docs-only PR still goes green.
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      markdown: ${{ steps.filter.outputs.markdown }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+        id: filter
+        with:
+          filters: |
+            rust:
+              - 'src/**'
+              - 'tests/**'
+              - 'examples/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rustfmt.toml'
+            markdown:
+              - '**/*.md'
+              - '.markdownlint-cli2.jsonc'
+            workflows:
+              - '.github/workflows/**'
+
+  fmt:
+    name: rustfmt
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master (no semver tags upstream)
+        with:
+          toolchain: stable
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    name: clippy
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master (no semver tags upstream)
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+      - run: cargo clippy --all-targets -- -D warnings
+
+  test:
+    name: test
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master (no semver tags upstream)
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+      - run: cargo test --locked
+
+  # Build (not full test) against the `rust-version` pin in Cargo.toml, so an
+  # accidental use of a newer language feature fails visibly instead of
+  # silently raising the MSRV.
+  msrv:
+    name: msrv
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Extract MSRV from Cargo.toml
+        id: msrv
+        run: |
+          VERSION=$(grep '^rust-version' Cargo.toml | cut -d'"' -f2)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master (no semver tags upstream)
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+      - run: cargo check --all-targets --locked
+
+  # Cross-OS coverage: tests on macOS and Windows. Skipped on PRs to keep the
+  # merge gate fast; runs on push→main as a post-merge signal (path handling
+  # in walkdir/anchor drift is the plausible platform-specific surface).
+  # Deliberately excluded from `ci-success`.
+  cross-os:
+    name: cross-os (${{ matrix.os }})
+    needs: changes
+    if: github.event_name != 'pull_request' && needs.changes.outputs.rust == 'true'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master (no semver tags upstream)
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+      - run: cargo test --locked
+
+  markdown:
+    name: markdownlint
+    needs: changes
+    if: needs.changes.outputs.markdown == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: DavidAnson/markdownlint-cli2-action@ded1f9488f68a970bc66ea5619e13e9b52e601cd # v23
+        with:
+          globs: '**/*.md'
+          config: '.markdownlint-cli2.jsonc'
+
+  actionlint:
+    name: actionlint
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install actionlint
+        # Upstream downloader, pinned to actionlint's release commit and
+        # verified by sha256 before running — never an unverified `curl | bash`.
+        id: install
+        env:
+          ACTIONLINT_SHA: 914e7df21a07ef503a81201c76d2b11c789d3fca # v1.7.12
+          DOWNLOADER_SHA256: 72fa3e45ac20f3c3a512d6747b4fcf719e21f890e8c43e78d48a41fdfb900c4e
+        run: |
+          curl -fsSL -o download-actionlint.bash \
+            "https://raw.githubusercontent.com/rhysd/actionlint/${ACTIONLINT_SHA}/scripts/download-actionlint.bash"
+          echo "${DOWNLOADER_SHA256}  download-actionlint.bash" | sha256sum --check --status
+          bash download-actionlint.bash 1.7.12
+          echo "path=$(pwd)/actionlint" >> "$GITHUB_OUTPUT"
+      - name: Run actionlint
+        run: ${{ steps.install.outputs.path }} -color
+
+  # Single required status check for `main` branch protection. It `needs:`
+  # every per-PR gate, so protection pins one stable name that never changes
+  # as jobs are added or removed. `cross-os` is excluded — post-merge signal,
+  # not a merge gate. `if: always()` so this job runs (and fails) when a
+  # dependency fails rather than being skipped.
+  ci-success:
+    name: ci-success
+    if: always()
+    needs: [changes, fmt, clippy, test, msrv, markdown, actionlint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          echo "One or more required CI jobs failed or were cancelled."
+          exit 1
+      - name: All required jobs passed
+        run: echo "All required CI jobs passed or were skipped."

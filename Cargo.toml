@@ -2,7 +2,7 @@
 name = "roadmap-cli"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.85"
 authors = ["Bastien Gallay <bastien@gallay.org>"]
 description = "Generate a ROADMAP.md from a .roadmap/ directory of TOML-frontmatter feature files."
 license = "MIT OR Apache-2.0"

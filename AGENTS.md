@@ -26,12 +26,22 @@ cargo run -- generate              # run against ./.roadmap (see examples/)
 cargo run -- --root examples/.roadmap generate
 ```
 
+CI (`.github/workflows/ci.yml`) runs fmt, clippy, test, an MSRV check,
+markdownlint, and actionlint — mirror the commands above before pushing.
+Jobs are path-filtered; branch protection should pin the single
+`ci-success` aggregator check. `cross-os` (macOS/Windows tests) runs on
+push to `main` only — a signal, not a merge gate. Third-party actions
+are pinned to commit SHAs; bump the SHA and its version comment
+together, never switch back to a mutable tag.
+
 Snapshot tests use `insta` (`tests/snapshots/`). After an intentional
 output change: `cargo insta review` (or `INSTA_UPDATE=always cargo test`),
 and commit the updated `.snap` files.
 
-MSRV is pinned in `Cargo.toml` (`rust-version = "1.80"`, edition 2021) —
-do not use newer language features without bumping it deliberately.
+MSRV is pinned in `Cargo.toml` (`rust-version = "1.85"`, edition 2021) —
+CI has an `msrv` job that `cargo check`s against that exact toolchain,
+so a newer language feature (or a dep bump raising its own MSRV) fails
+visibly instead of silently raising ours. Bump the pin deliberately.
 
 ## Architecture
 
