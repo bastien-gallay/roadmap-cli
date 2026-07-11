@@ -132,7 +132,14 @@ pub fn split_frontmatter(src: &str) -> Result<(&str, &str)> {
 }
 
 pub fn parse_feature(src: &str) -> Result<Feature> {
-    let (toml_block, body) = split_frontmatter(src)?;
+    // Normalize CRLF so Windows-authored (or autocrlf-checked-out) files
+    // parse identically; the renderer emits LF-only output either way.
+    let normalized: std::borrow::Cow<'_, str> = if src.contains('\r') {
+        std::borrow::Cow::Owned(src.replace("\r\n", "\n"))
+    } else {
+        std::borrow::Cow::Borrowed(src)
+    };
+    let (toml_block, body) = split_frontmatter(&normalized)?;
     let frontmatter: Frontmatter =
         toml::from_str(toml_block).context("invalid TOML frontmatter")?;
     Ok(Feature {
@@ -324,6 +331,20 @@ target = [\"v0.2.x\"]\n\
         let f = parse_feature(src).unwrap();
         assert_eq!(f.frontmatter.id, "F-foo");
         assert_eq!(f.frontmatter.status, Status::Todo);
+        assert_eq!(f.body, "The summary.\n");
+    }
+
+    #[test]
+    fn parse_accepts_crlf_line_endings() {
+        let src = "+++\r\n\
+id = \"F-foo\"\r\n\
+topic = \"Architecture\"\r\n\
+status = \"todo\"\r\n\
+priority = \"next\"\r\n\
+target = [\"v0.2.x\"]\r\n\
++++\r\n\r\nThe summary.\r\n";
+        let f = parse_feature(src).unwrap();
+        assert_eq!(f.frontmatter.id, "F-foo");
         assert_eq!(f.body, "The summary.\n");
     }
 

@@ -1,0 +1,4 @@
+# Force LF at checkout on every platform: test fixtures are parsed
+# byte-for-byte and insta snapshots are compared against LF-only render
+# output, so a CRLF checkout (Windows autocrlf) must never happen.
+* text=auto eol=lf
