@@ -8,9 +8,9 @@ this repository.
 `roadmark` generates a `ROADMAP.md` from a `.roadmap/` directory of
 TOML-frontmatter feature files (one small markdown file per feature).
 The roadmap document is a **generated artifact**; `.roadmap/` is the
-source of truth. The crate, binary, and library are all named `roadmark`
-(the GitHub repository is still `roadmap-cli` until it is renamed). See
-[README.md](README.md) for the file format and CLI usage.
+source of truth. The crate, binary, library, and GitHub repository are
+all named `roadmark`. See [README.md](README.md) for the file format and
+CLI usage.
 
 ## Commands
 

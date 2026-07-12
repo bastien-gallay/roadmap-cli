@@ -3,11 +3,11 @@
 **Your roadmap as code — compiled, versioned, and validated in CI, so it
 never rots.**
 
-> **Naming:** the crate and the binary are both `roadmark`. The GitHub
-> repository is still `bastien-gallay/roadmap-cli` until it is renamed, so
-> the install URLs below keep that path. The `roadmark`-named release
-> artifacts ship with the first release cut after the rename; until then,
-> install with `cargo install --git …` or from a local checkout.
+> **Naming:** the crate, the binary, and the GitHub repository
+> (`bastien-gallay/roadmark`) are all `roadmark`. The `roadmark`-named
+> release artifacts ship with the first release cut after the rename;
+> until then, install with `cargo install --git …` or from a local
+> checkout.
 
 ---
 
@@ -41,21 +41,21 @@ level, with a validation guarantee.
 ## Install
 
 Prebuilt binaries (macOS, Linux, Windows — see the
-[latest release](https://github.com/bastien-gallay/roadmap-cli/releases/latest)):
+[latest release](https://github.com/bastien-gallay/roadmark/releases/latest)):
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf \
-  https://github.com/bastien-gallay/roadmap-cli/releases/latest/download/roadmark-installer.sh | sh
+  https://github.com/bastien-gallay/roadmark/releases/latest/download/roadmark-installer.sh | sh
 ```
 
 ```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://github.com/bastien-gallay/roadmap-cli/releases/latest/download/roadmark-installer.ps1 | iex"
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/bastien-gallay/roadmark/releases/latest/download/roadmark-installer.ps1 | iex"
 ```
 
 Or with cargo, from the Git repo or a local checkout:
 
 ```sh
-cargo install --git https://github.com/bastien-gallay/roadmap-cli
+cargo install --git https://github.com/bastien-gallay/roadmark
 cargo install --path .
 ```
 
