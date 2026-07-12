@@ -86,7 +86,11 @@ fn schema_error_does_not_abort_run() {
     let root = unique_tmp("schema-err");
     let features = root.join("features");
     std::fs::create_dir_all(&features).unwrap();
-    std::fs::write(root.join("config.toml"), "versions = [\"v0.2.x\"]\n").unwrap();
+    std::fs::write(
+        root.join("config.toml"),
+        "versions = [\"v0.2.x\"]\n[fields.horizon]\nvalues = [\"next\"]\n",
+    )
+    .unwrap();
     std::fs::write(
         features.join("f-good.md"),
         "+++\nid = \"F-good\"\ntype = \"feature\"\narea = [\"x\"]\nhorizon = \"next\"\nstatus = \"todo\"\ntarget = [\"v0.2.x\"]\n+++\n\nGood.\n",
@@ -109,7 +113,11 @@ fn anchor_collision_detected() {
     let root = unique_tmp("collision");
     let features = root.join("features");
     std::fs::create_dir_all(&features).unwrap();
-    std::fs::write(root.join("config.toml"), "versions = [\"v0.2.x\"]\n").unwrap();
+    std::fs::write(
+        root.join("config.toml"),
+        "versions = [\"v0.2.x\"]\n[fields.horizon]\nvalues = [\"next\"]\n",
+    )
+    .unwrap();
     // Two distinct IDs that lowercase to the same anchor.
     std::fs::write(
         features.join("f-foo-1.md"),

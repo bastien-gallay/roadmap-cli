@@ -61,6 +61,12 @@ pub struct Frontmatter {
 }
 
 impl Frontmatter {
+    /// The schema fields this generator models. A config `[fields.*]` name
+    /// outside this set is a typo that would otherwise silently disable
+    /// validation, so `validate` rejects it.
+    pub const FIELD_NAMES: &'static [&'static str] =
+        &["type", "class", "effort", "area", "horizon", "severity"];
+
     /// Values a named schema field currently holds, for config-driven
     /// validation. `None` = this generator does not model a field of that
     /// name (config references something unknown → the caller skips it).

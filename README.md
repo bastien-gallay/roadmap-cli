@@ -107,8 +107,10 @@ roadmap add f-my-feature        # scaffold a new feature file
 
 Read-only. Reports:
 
-- **schema errors** — malformed frontmatter, unknown field values, or a
-  missing `required_when` field (does not abort on the first one)
+- **schema errors** — malformed frontmatter, unknown field values, a
+  single-valued field given a list, a missing `required_when` field, an
+  unknown `[fields.*]` name, or a missing `[fields.horizon]` (does not abort
+  on the first one)
 - **duplicate ids** / **anchor collisions** — two features that would
   produce the same `<a id="…">` anchor
 - **anchor drift** — anchors in the committed `ROADMAP.md` that a fresh
