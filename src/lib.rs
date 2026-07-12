@@ -283,14 +283,14 @@ fn clean_inline_markdown(line: &str) -> String {
     for (i, &c) in chars.iter().enumerate() {
         match c {
             // Code-span delimiter: drop, keep the content.
-            '`' => {}
+            '`' => {},
             // A `*`/`_` flanked by alphanumerics on BOTH sides is an
             // identifier char, not an emphasis delimiter — keep it; drop it
             // otherwise (`*bold*`, `_em_`, `**strong**`).
             '*' | '_'
                 if !(i > 0
                     && chars[i - 1].is_alphanumeric()
-                    && chars.get(i + 1).is_some_and(|n| n.is_alphanumeric())) => {}
+                    && chars.get(i + 1).is_some_and(|n| n.is_alphanumeric())) => {},
             _ => out.push(c),
         }
     }
@@ -323,8 +323,8 @@ fn link_at(chars: &[char], start: usize) -> Option<(&[char], usize)> {
     if chars.get(start) != Some(&'[') {
         return None;
     }
-    let close = (start + 1..chars.len())
-        .find(|&j| chars[j] == ']' && chars.get(j + 1) == Some(&'('))?;
+    let close =
+        (start + 1..chars.len()).find(|&j| chars[j] == ']' && chars.get(j + 1) == Some(&'('))?;
     let paren = (close + 2..chars.len()).find(|&j| chars[j] == ')')?;
     Some((&chars[start + 1..close], paren + 1))
 }
