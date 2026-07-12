@@ -82,9 +82,15 @@ Subcommand modules follow the same split:
   (the catalog Summary). Don't introduce a markdown AST.
 - **Output is deterministic.** `load_features` walks in filename order
   and `sort_features` uses a total key (target bucket → status →
-  priority → id, then `shipped_order`). Any new emission must keep
+  horizon → `shipped_order` → id). Any new emission must keep
   regen byte-stable — there's a determinism test in
   `tests/generate.rs`.
+- **Field taxonomies are config-owned, not hardcoded** (schema v2).
+  Allowed values for `type`/`class`/`effort`/`area`/`horizon`/`severity`
+  live in `config.toml` `[fields.*]` and are enforced by `validate`
+  (closed set, `multi` shape, `required_when` conditions with AND
+  semantics). Horizon sort order comes from the declared value order.
+  Don't bake project-specific values into the binary.
 - **`validate` silent-passes when `.roadmap/` is absent**
   (`source_missing`), so the same recipe runs on checkouts without the
   source tree (CI, worktrees). Don't turn that into an error.
