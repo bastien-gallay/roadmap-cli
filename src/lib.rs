@@ -4,6 +4,7 @@
 //! and snapshot the rendered output via `insta`.
 
 pub mod add;
+pub mod rename;
 pub mod validate;
 
 use anyhow::{anyhow, bail, Context, Result};

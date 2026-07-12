@@ -77,7 +77,7 @@ pub fn add(root: &Path, slug: &str, allow_legacy_numeric: bool) -> Result<AddOut
 
 /// Capitalize the leading `f` of the slug to produce the canonical id.
 /// `f-foo` → `F-foo`, `f139` → `F139`.
-fn derive_id(slug: &str) -> String {
+pub(crate) fn derive_id(slug: &str) -> String {
     let mut chars = slug.chars();
     match chars.next() {
         Some(_) => format!("F{}", chars.as_str()),

@@ -154,6 +154,7 @@ target bucket (order of `versions` in `config.toml`) → status
 roadmap generate > ROADMAP.md   # render to stdout
 roadmap validate                # schema, slug uniqueness, anchor drift
 roadmap add f-my-feature        # scaffold a new feature file
+roadmap rename f-old f-new      # rename a slug, rewriting cross-links
 ```
 
 `roadmap --root path/to/.roadmap generate` points at a non-default location.
@@ -174,10 +175,21 @@ Read-only. Reports:
 
 Exit code is non-zero on hard errors, or on drift unless `--accept-drift`.
 
+### `rename`
+
+`roadmap rename <from> <to>` moves `features/<from>.md` to
+`features/<to>.md`, updates its `id`, and rewrites cross-references
+(`[F-old](#f-old)` links, bare id mentions, `f-old.md` path references)
+in every feature body. Matching is whole-token, so ids that merely share
+a prefix (`F-old-widget`) are untouched. It refuses to overwrite an
+existing file or collide with another feature's anchor. Regenerate
+`ROADMAP.md` afterwards.
+
 ## Slug convention
 
 New features use `f-<kebab-name>`. The legacy `f<digits>` form is rejected
-by `add` unless `--allow-legacy-numeric` is passed (migration only).
+by `add` (and as a `rename` target) unless `--allow-legacy-numeric` is
+passed (migration only).
 
 ## License
 

@@ -4,9 +4,9 @@
 //! - `generate`: render `ROADMAP.md` to stdout
 //! - `validate`: schema, slug uniqueness, anchor drift
 //! - `add`: scaffold a new feature file
-//! - `rename`: (stub) rename a slug, rewriting cross-links
+//! - `rename`: rename a slug, moving the file and rewriting cross-links
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -51,10 +51,18 @@ enum Command {
         #[arg(long)]
         accept_drift: bool,
     },
-    /// Rename a feature slug, rewriting cross-links.
-    /// Not implemented yet — hidden from `--help` until it lands.
-    #[command(hide = true)]
-    Rename { from: String, to: String },
+    /// Rename a feature slug: move the file, update its id, and rewrite
+    /// cross-references in every feature body.
+    Rename {
+        /// Current slug (matches the filename without `.md`).
+        from: String,
+        /// New slug. Must be `f-<kebab-name>` unless `--allow-legacy-numeric`.
+        to: String,
+        /// Allow the legacy `f<digits>` slug shape as the target.
+        /// Migration-only — emits a deprecation warning.
+        #[arg(long)]
+        allow_legacy_numeric: bool,
+    },
 }
 
 fn main() -> ExitCode {
@@ -82,7 +90,11 @@ fn run() -> Result<ExitCode> {
             slug,
             allow_legacy_numeric,
         } => add_cmd(&cli.root, &slug, allow_legacy_numeric),
-        Command::Rename { from, to } => bail!("`rename {from} → {to}` not implemented"),
+        Command::Rename {
+            from,
+            to,
+            allow_legacy_numeric,
+        } => rename_cmd(&cli.root, &from, &to, allow_legacy_numeric),
     }
 }
 
@@ -104,6 +116,30 @@ fn add_cmd(root: &std::path::Path, slug: &str, allow_legacy_numeric: bool) -> Re
         );
     }
     println!("created {}", outcome.path.display());
+    Ok(ExitCode::SUCCESS)
+}
+
+fn rename_cmd(
+    root: &std::path::Path,
+    from: &str,
+    to: &str,
+    allow_legacy_numeric: bool,
+) -> Result<ExitCode> {
+    let outcome = roadmap_cli::rename::rename(root, from, to, allow_legacy_numeric)?;
+    if outcome.legacy_numeric_warning {
+        eprintln!(
+            "warning: `{to}` uses the legacy `f<digits>` slug shape — \
+             deprecated, only intended for one-shot migration. New \
+             slugs should use `f-<kebab-name>`."
+        );
+    }
+    println!(
+        "renamed {} -> {}",
+        outcome.old_path.display(),
+        outcome.new_path.display()
+    );
+    println!("rewrote {} file(s)", outcome.rewritten.len());
+    eprintln!("hint: regenerate the roadmap (`roadmap generate > ROADMAP.md`)");
     Ok(ExitCode::SUCCESS)
 }
 

@@ -74,8 +74,11 @@ Subcommand modules follow the same split:
   `ValidationReport` rather than bailing on the first parse error.
   Anchor drift is computed by regenerating in memory and diffing
   `<a id="…">` anchors against the on-disk `ROADMAP.md`.
-- `rename` is declared in the CLI but is a stub (`bail!`) — not
-  implemented yet.
+- **`src/rename.rs`** — moves the feature file, updates its `id` (taken
+  from the file, not the filename), and rewrites cross-references in
+  every feature body via whole-token replacement of the old id and its
+  lowercased anchor form (`replace_token` — hand-rolled scanner, no
+  regex). Returns a `RenameOutcome`, same stderr-free contract as `add`.
 
 ## Design decisions to preserve
 
