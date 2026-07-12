@@ -13,7 +13,11 @@
 | [F-crlf-parsing](#f-crlf-parsing) | fix | major | S | core | shipped | ✅ | v0.1 | CRLF-authored feature files parse correctly (Windows checkouts turned +++ fences into +++\r and broke … |
 | [F-schema-v2](#f-schema-v2) | feature | differentiator | L | core | shipped | ✅ | v0.2 | Config-owned field taxonomies: type/class/effort/area/horizon/severity values are declared per-project in config.toml … |
 | [F-rename](#f-rename) | feature | table-stakes | M | cli, core | shipped | ✅ | v0.4 | roadmark rename: rename a feature id, move its file, and rewrite cross-references so anchors stay consistent. |
+| [F-crates-io](#f-crates-io) | chore | — | S | release, docs | next | ☐ | Later | Publish roadmark to crates.io so it installs with cargo install roadmark, and add the crates.io version badge to the … |
+| [F-validate-action](#f-validate-action) | feature | differentiator | M | release, docs | next | ☐ | Later | Ship a reusable GitHub Action that runs roadmark validate, so any repo can gate its roadmap in CI and display a … |
 | [F-init](#f-init) | feature | enabler | S | cli, docs | later | ☐ | Later | roadmark init scaffolds a starter .roadmap/ tree (config.toml with commented field declarations plus one example … |
+| [F-rmk-alias](#f-rmk-alias) | feature | polish | S | cli | parked | ☐ | Later | Brainstorm: expose a short rmk alias for the roadmark binary so the three verbs (rmk add\|generate\|validate) are quicker … |
+| [F-roadmark-dir-rename](#f-roadmark-dir-rename) | chore | — | M | core, cli | parked | ☐ | Later | Brainstorm: rename the source directory .roadmap/ → .roadmark/ for brand coherence. Breaking for existing users; would … |
 
 ## Details
 
@@ -69,6 +73,22 @@ Shipped in v0.4.0 (2026-07-12).
 
 `roadmark rename`: rename a feature id, move its file, and rewrite cross-references so anchors stay consistent.
 
+### <a id="f-crates-io"></a>F-crates-io
+
+Publish `roadmark` to crates.io so it installs with `cargo install roadmark`, and add the crates.io version badge to the README.
+
+### <a id="f-validate-action"></a>F-validate-action
+
+Ship a reusable GitHub Action that runs `roadmark validate`, so any repo can gate its roadmap in CI and display a `roadmap: valid` badge — the badge is the distribution loop: every repo that shows it advertises the tool.
+
 ### <a id="f-init"></a>F-init
 
 `roadmark init` scaffolds a starter `.roadmap/` tree (config.toml with commented field declarations plus one example feature) in a new project.
+
+### <a id="f-rmk-alias"></a>F-rmk-alias
+
+Brainstorm: expose a short `rmk` alias for the `roadmark` binary so the three verbs (`rmk add|generate|validate`) are quicker to type. Open question: second binary, shell alias in docs, or nothing.
+
+### <a id="f-roadmark-dir-rename"></a>F-roadmark-dir-rename
+
+Brainstorm: rename the source directory `.roadmap/` → `.roadmark/` for brand coherence. Breaking for existing users; would need a compatibility shim or a migration path. Open question: worth the churn?
