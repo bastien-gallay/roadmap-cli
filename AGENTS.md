@@ -27,7 +27,9 @@ cargo run -- --root examples/.roadmap generate
 ```
 
 CI (`.github/workflows/ci.yml`) runs fmt, clippy, test, an MSRV check,
-markdownlint, and actionlint — mirror the commands above before pushing.
+`roadmap validate` (the repo dogfoods its own `.roadmap/`; regenerate
+`ROADMAP.md` after editing it or the renderer), markdownlint, and
+actionlint — mirror the commands above before pushing.
 Jobs are path-filtered; branch protection should pin the single
 `ci-success` aggregator check. `cross-os` (macOS/Windows tests) runs on
 push to `main` only — a signal, not a merge gate. Third-party actions

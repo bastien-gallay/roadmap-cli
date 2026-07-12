@@ -33,6 +33,7 @@ jobs:
       rust: ${{ steps.filter.outputs.rust }}
       markdown: ${{ steps.filter.outputs.markdown }}
       workflows: ${{ steps.filter.outputs.workflows }}
+      roadmap: ${{ steps.filter.outputs.roadmap }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
@@ -51,6 +52,9 @@ jobs:
               - '.markdownlint-cli2.jsonc'
             workflows:
               - '.github/workflows/**'
+            roadmap:
+              - '.roadmap/**'
+              - 'ROADMAP.md'
 
   fmt:
     name: rustfmt
@@ -134,6 +138,24 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
       - run: cargo test --locked
 
+  # Dogfooding gate: the repo's own ROADMAP.md must match a fresh regen of
+  # .roadmap/ (schema + anchor drift). Also runs on Rust changes, since a
+  # renderer change can introduce drift without touching .roadmap/ itself.
+  # `validate` silent-passes when .roadmap/ is absent, so this stays green
+  # on checkouts without the source tree.
+  roadmap-validate:
+    name: roadmap validate
+    needs: changes
+    if: needs.changes.outputs.roadmap == 'true' || needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master (no semver tags upstream)
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+      - run: cargo run --locked -- validate
+
   markdown:
     name: markdownlint
     needs: changes
@@ -182,7 +204,7 @@ jobs:
   ci-success:
     name: ci-success
     if: always()
-    needs: [changes, fmt, clippy, test, msrv, markdown, actionlint]
+    needs: [changes, fmt, clippy, test, msrv, roadmap-validate, markdown, actionlint]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any required job failed or was cancelled
