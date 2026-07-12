@@ -1,5 +1,5 @@
 # Bucket order for sorting and section emission. Earliest cycle first.
-versions = ["v0.1", "v0.2", "v0.3", "Later"]
+versions = ["v0.1", "v0.2", "v0.3", "v0.4", "Later"]
 
 title = "roadmap-cli — Roadmap"
 

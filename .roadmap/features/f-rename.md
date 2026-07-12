@@ -4,10 +4,9 @@ type = "feature"
 class = "table-stakes"
 effort = "M"
 area = ["cli", "core"]
-horizon = "shipped"
+horizon = "now"
 status = "done"
-target = ["v0.3"]
-shipped_order = 7
+target = ["v0.4"]
 +++
 
 `roadmap rename`: rename a feature id, move its file, and rewrite cross-references so anchors stay consistent.
