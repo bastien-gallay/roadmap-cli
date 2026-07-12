@@ -12,7 +12,7 @@
 | [F-prebuilt-binaries](#f-prebuilt-binaries) | chore | — | M | release | shipped | ✅ | v0.1 | cargo-dist release pipeline: binaries for 5 targets plus shell/powershell installers on every `v<semver>` tag. |
 | [F-crlf-parsing](#f-crlf-parsing) | fix | major | S | core | shipped | ✅ | v0.1 | CRLF-authored feature files parse correctly (Windows checkouts turned `+++` fences into `+++\r` and broke `split_frontmatter`). |
 | [F-schema-v2](#f-schema-v2) | feature | differentiator | L | core | shipped | ✅ | v0.2 | Config-owned field taxonomies: `type`/`class`/`effort`/`area`/`horizon`/`severity` values are declared per-project in `config.toml` `[fields.*]`, not hardcoded. |
-| [F-rename](#f-rename) | feature | table-stakes | M | cli, core | shipped | ✅ | v0.3 | Implement `roadmap rename` (currently a CLI stub): rename a feature id, move its file, and rewrite cross-references so anchors stay consistent. |
+| [F-rename](#f-rename) | feature | table-stakes | M | cli, core | shipped | ✅ | v0.3 | `roadmap rename`: rename a feature id, move its file, and rewrite cross-references so anchors stay consistent. |
 | [F-init](#f-init) | feature | enabler | S | cli, docs | later | ☐ | Later | `roadmap init` scaffolds a starter `.roadmap/` tree (config.toml with commented field declarations plus one example feature) in a new project. |
 
 ## Details
@@ -65,7 +65,7 @@ horizon sort order comes from the declared value order.
 
 ### <a id="f-rename"></a>F-rename
 
-Implement `roadmap rename` (currently a CLI stub): rename a feature id, move its file, and rewrite cross-references so anchors stay consistent.
+`roadmap rename`: rename a feature id, move its file, and rewrite cross-references so anchors stay consistent.
 
 ### <a id="f-init"></a>F-init
 

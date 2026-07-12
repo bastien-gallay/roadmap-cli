@@ -182,8 +182,9 @@ Exit code is non-zero on hard errors, or on drift unless `--accept-drift`.
 (`[F-old](#f-old)` links, bare id mentions, `f-old.md` path references)
 in every feature body. Matching is whole-token, so ids that merely share
 a prefix (`F-old-widget`) are untouched. It refuses to overwrite an
-existing file or collide with another feature's anchor. Regenerate
-`ROADMAP.md` afterwards.
+existing file, to collide with another feature's anchor, or to run while
+the old id is duplicated across files. Regenerate `ROADMAP.md`
+afterwards.
 
 ## Slug convention
 

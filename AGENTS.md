@@ -76,9 +76,12 @@ Subcommand modules follow the same split:
   `<a id="…">` anchors against the on-disk `ROADMAP.md`.
 - **`src/rename.rs`** — moves the feature file, updates its `id` (taken
   from the file, not the filename), and rewrites cross-references in
-  every feature body via whole-token replacement of the old id and its
-  lowercased anchor form (`replace_token` — hand-rolled scanner, no
-  regex). Returns a `RenameOutcome`, same stderr-free contract as `add`.
+  every feature body via whole-token replacement of the old id, its
+  lowercased anchor form, and the old slug when it diverged from the id
+  (`replace_token` — hand-rolled scanner, no regex). All files are read
+  once and rewrites staged in memory; mutations run in re-run-recoverable
+  order (other files → move → renamed file's content). Returns a
+  `RenameOutcome`, same stderr-free contract as `add`.
 
 ## Design decisions to preserve
 
