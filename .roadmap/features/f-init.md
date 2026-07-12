@@ -9,4 +9,4 @@ status = "todo"
 target = ["Later"]
 +++
 
-`roadmap init` scaffolds a starter `.roadmap/` tree (config.toml with commented field declarations plus one example feature) in a new project.
+`roadmark init` scaffolds a starter `.roadmap/` tree (config.toml with commented field declarations plus one example feature) in a new project.

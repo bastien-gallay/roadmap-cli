@@ -5,8 +5,9 @@ never rots.**
 
 > **Naming:** the crate and the binary are both `roadmark`. The GitHub
 > repository is still `bastien-gallay/roadmap-cli` until it is renamed, so
-> the install URLs below keep that path — the artifacts they fetch are now
-> named `roadmark`.
+> the install URLs below keep that path. The `roadmark`-named release
+> artifacts ship with the first release cut after the rename; until then,
+> install with `cargo install --git …` or from a local checkout.
 
 ---
 

@@ -13,7 +13,7 @@
 | [F-crlf-parsing](#f-crlf-parsing) | fix | major | S | core | shipped | ✅ | v0.1 | CRLF-authored feature files parse correctly (Windows checkouts turned +++ fences into +++\r and broke … |
 | [F-schema-v2](#f-schema-v2) | feature | differentiator | L | core | shipped | ✅ | v0.2 | Config-owned field taxonomies: type/class/effort/area/horizon/severity values are declared per-project in config.toml … |
 | [F-rename](#f-rename) | feature | table-stakes | M | cli, core | shipped | ✅ | v0.4 | roadmark rename: rename a feature id, move its file, and rewrite cross-references so anchors stay consistent. |
-| [F-init](#f-init) | feature | enabler | S | cli, docs | later | ☐ | Later | roadmap init scaffolds a starter .roadmap/ tree (config.toml with commented field declarations plus one example … |
+| [F-init](#f-init) | feature | enabler | S | cli, docs | later | ☐ | Later | roadmark init scaffolds a starter .roadmap/ tree (config.toml with commented field declarations plus one example … |
 
 ## Details
 
@@ -71,4 +71,4 @@ Shipped in v0.4.0 (2026-07-12).
 
 ### <a id="f-init"></a>F-init
 
-`roadmap init` scaffolds a starter `.roadmap/` tree (config.toml with commented field declarations plus one example feature) in a new project.
+`roadmark init` scaffolds a starter `.roadmap/` tree (config.toml with commented field declarations plus one example feature) in a new project.
