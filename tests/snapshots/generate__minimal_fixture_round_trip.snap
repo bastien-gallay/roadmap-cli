@@ -11,7 +11,7 @@ expression: out
 | ID | Type | Class/Sev | Effort | Area | Horizon | Status | Target | Summary |
 |---|---|---|---|---|---|---|---|---|
 | [F22](#f22) | feature | — | — | rules | next | 🚧 | v0.2.x → v0.3 | Parenthesised-list (Oxford done; non-Oxford deferred to v0.3 slice). |
-| [F-roadmap-toml-source](#f-roadmap-toml-source) | feature | — | — | arch | next | ☐ | v0.2.x | ROADMAP source-of-truth migrates to `.roadmap/` (gitignored). |
+| [F-roadmap-toml-source](#f-roadmap-toml-source) | feature | — | — | arch | next | ☐ | v0.2.x | ROADMAP source-of-truth migrates to .roadmap/ (gitignored). |
 | [F-llm-plugin](#f-llm-plugin) | feature | — | — | adoption | parked | ☐ | v0.4 | LLM plugin — out-of-band suggestion stream alongside diagnostics. |
 
 ## Details

@@ -256,12 +256,101 @@ pub fn sort_features(features: &mut [Feature], config: &Config) {
     });
 }
 
-/// First non-empty line of the body, used as the catalog summary.
-fn summary(body: &str) -> &str {
-    body.lines()
-        .find(|l| !l.trim().is_empty())
-        .map(str::trim)
-        .unwrap_or("")
+/// Longest catalog Summary before it stops being scannable, in `char`s.
+const SUMMARY_MAX_CHARS: usize = 120;
+
+/// A short, scannable plain-text lead for the catalog Summary column.
+///
+/// Takes the first non-empty body line, strips inline markdown (code-span
+/// backticks, `*`/`_` emphasis markers, and `[text](url)` links folded to
+/// `text`), collapses whitespace runs to single spaces, then truncates to
+/// [`SUMMARY_MAX_CHARS`] on a word boundary — never mid-word, never mid-`char`.
+/// A line already within the budget is returned unchanged; a truncated one
+/// gains a trailing `" …"`. The full body still lives in the Details section.
+fn summary(body: &str) -> String {
+    let line = body.lines().find(|l| !l.trim().is_empty()).unwrap_or("");
+    let cleaned = clean_inline_markdown(line);
+    truncate_on_word_boundary(&cleaned, SUMMARY_MAX_CHARS)
+}
+
+/// Fold inline markdown in a single line down to plain text: `[text](url)` →
+/// `text`, drop code-span backticks, drop `*`/`_` **emphasis delimiters** while
+/// keeping them intraword (so `lint_str` / `MAX_SEGMENT_WORDS` identifiers
+/// survive), and collapse runs of whitespace to single spaces (trimming ends).
+fn clean_inline_markdown(line: &str) -> String {
+    let chars: Vec<char> = strip_inline_links(line).chars().collect();
+    let mut out = String::with_capacity(chars.len());
+    for (i, &c) in chars.iter().enumerate() {
+        match c {
+            // Code-span delimiter: drop, keep the content.
+            '`' => {},
+            // A `*`/`_` flanked by alphanumerics on BOTH sides is an
+            // identifier char, not an emphasis delimiter — keep it; drop it
+            // otherwise (`*bold*`, `_em_`, `**strong**`).
+            '*' | '_'
+                if !(i > 0
+                    && chars[i - 1].is_alphanumeric()
+                    && chars.get(i + 1).is_some_and(|n| n.is_alphanumeric())) => {},
+            _ => out.push(c),
+        }
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Replace `[text](url)` spans with their `text`, leaving everything else
+/// (including lone brackets and reference-style links) untouched.
+fn strip_inline_links(s: &str) -> String {
+    let chars: Vec<char> = s.chars().collect();
+    let mut out = String::with_capacity(s.len());
+    let mut i = 0;
+    while i < chars.len() {
+        if let Some((text, next)) = link_at(&chars, i) {
+            out.extend(text);
+            i = next;
+            continue;
+        }
+        out.push(chars[i]);
+        i += 1;
+    }
+    out
+}
+
+/// If a `[text](url)` link starts at `chars[start]`, return its `text` slice
+/// and the index just past the closing `)`. Otherwise `None`. The text ends at
+/// the first `]` immediately followed by `(`, so brackets inside the text
+/// (`[see [ref]](url)`) don't cut it short.
+fn link_at(chars: &[char], start: usize) -> Option<(&[char], usize)> {
+    if chars.get(start) != Some(&'[') {
+        return None;
+    }
+    let close =
+        (start + 1..chars.len()).find(|&j| chars[j] == ']' && chars.get(j + 1) == Some(&'('))?;
+    let paren = (close + 2..chars.len()).find(|&j| chars[j] == ')')?;
+    Some((&chars[start + 1..close], paren + 1))
+}
+
+/// Truncate `s` to at most `max_chars` `char`s, backing off to the last word
+/// boundary so no word is split. Returns `s` unchanged when it already fits;
+/// otherwise appends `" …"`. A single over-long word with no interior boundary
+/// is hard-cut on a `char` boundary (never mid-UTF-8).
+fn truncate_on_word_boundary(s: &str, max_chars: usize) -> String {
+    if s.chars().count() <= max_chars {
+        return s.to_string();
+    }
+    // Byte index just past the `max_chars`-th char — always a char boundary.
+    let mut end = 0;
+    for (count, (idx, ch)) in s.char_indices().enumerate() {
+        if count >= max_chars {
+            break;
+        }
+        end = idx + ch.len_utf8();
+    }
+    let prefix = &s[..end];
+    let cut = match prefix.rfind(' ') {
+        Some(pos) => &prefix[..pos],
+        None => prefix,
+    };
+    format!("{} …", cut.trim_end())
 }
 
 /// HTML id for the anchor: lowercase the feature id.
@@ -322,7 +411,7 @@ pub fn render(features: &[Feature], config: &Config) -> String {
             horizon = escape_cell(&fm.horizon),
             status = fm.status.glyph(),
             target = escape_cell(&target),
-            summary = escape_cell(summary(&f.body)),
+            summary = escape_cell(&summary(&f.body)),
         );
     }
     if !features.is_empty() {
@@ -548,6 +637,93 @@ type = \"feature\"\n";
     }
 
     #[test]
+    fn summary_short_line_returned_unchanged() {
+        let body = "A concise lead sentence.\n\nMore prose below.";
+        let s = summary(body);
+        assert_eq!(s, "A concise lead sentence.");
+        assert!(!s.contains('…'));
+    }
+
+    #[test]
+    fn summary_long_line_truncates_on_word_boundary() {
+        let word = "lorem ipsum dolor ";
+        let long = word.repeat(20); // ~360 chars, no markdown
+        let s = summary(&long);
+        assert!(s.ends_with(" …"), "expected trailing ellipsis, got {s:?}");
+        assert!(
+            s.chars().count() <= 122,
+            "summary too long: {} chars",
+            s.chars().count()
+        );
+        // The kept prefix stops on a whole word — no dangling partial token.
+        let kept = s.trim_end_matches('…').trim_end();
+        assert!(kept
+            .split(' ')
+            .all(|w| ["lorem", "ipsum", "dolor"].contains(&w)));
+    }
+
+    #[test]
+    fn summary_strips_inline_markdown() {
+        let body = "Migrate `.roadmap/` with *bold* and _em_ and a [F22](#f22) link.";
+        let s = summary(body);
+        assert!(!s.contains('`'), "backticks remain: {s:?}");
+        assert!(!s.contains('*'), "asterisks remain: {s:?}");
+        assert!(!s.contains('_'), "underscores remain: {s:?}");
+        assert!(s.contains("F22"));
+        assert!(!s.contains("#f22"), "link url leaked: {s:?}");
+        assert_eq!(s, "Migrate .roadmap/ with bold and em and a F22 link.");
+    }
+
+    #[test]
+    fn summary_never_cuts_mid_word() {
+        // 120-char budget lands inside a word; the boundary back-off must keep
+        // only whole words.
+        let line = "alpha bravo charlie delta echo foxtrot golf hotel india juliet \
+                    kilo lima mike november oscar papa quebec romeo sierra tango";
+        let s = summary(line);
+        assert!(s.ends_with(" …"));
+        let kept = s.trim_end_matches('…').trim_end();
+        let words: Vec<&str> = line.split_whitespace().collect();
+        // Every kept token is a complete original word (prefix of the list).
+        for (i, w) in kept.split(' ').enumerate() {
+            assert_eq!(w, words[i], "token {i} was cut mid-word: {w:?}");
+        }
+    }
+
+    #[test]
+    fn summary_is_multibyte_safe() {
+        // Accented chars and em dashes: must not panic and must cut on a char
+        // boundary (valid UTF-8 out).
+        let line = "é—é—é ".repeat(60); // well over 120 chars, multibyte throughout
+        let s = summary(&line);
+        assert!(s.ends_with(" …"));
+        assert!(s.chars().count() <= 122);
+        // Round-trips as valid UTF-8 (no mid-char split would have panicked).
+        assert!(String::from_utf8(s.into_bytes()).is_ok());
+    }
+
+    #[test]
+    fn summary_preserves_snake_case_identifiers() {
+        // Underscores/asterisks inside a word are identifier chars, not
+        // emphasis — they must survive the strip.
+        let body = "Doctests for `Engine::with_profile` and `Engine::lint_str`, \
+                    plus MAX_SEGMENT_WORDS.";
+        let s = summary(body);
+        assert!(s.contains("Engine::with_profile"), "got {s:?}");
+        assert!(s.contains("Engine::lint_str"), "got {s:?}");
+        assert!(s.contains("MAX_SEGMENT_WORDS"), "got {s:?}");
+        assert!(!s.contains('`'), "backticks remain: {s:?}");
+    }
+
+    #[test]
+    fn summary_link_text_may_contain_brackets() {
+        // The `](` boundary closes the link text, not the first `]`, so
+        // brackets inside the text are preserved as plain text.
+        let s = summary("See [the [inner] note](https://x) here.");
+        assert_eq!(s, "See the [inner] note here.");
+    }
+
+    #[test]
     fn render_uses_title_and_source_note() {
         let config = Config {
             versions: vec!["v1".into()],
@@ -602,8 +778,9 @@ type = \"feature\"\n";
         let out = render(&[f], &cfg());
         // The row must carry exactly the 9 intended column separators plus
         // the two escaped literals — never a raw unescaped `|` in the text.
+        // The summary strips code-span backticks; pipe-escaping still applies.
         assert!(out.contains("CLI \\| TUI"));
-        assert!(out.contains("Support `a \\| b` operator."));
+        assert!(out.contains("Support a \\| b operator."));
     }
 
     #[test]
