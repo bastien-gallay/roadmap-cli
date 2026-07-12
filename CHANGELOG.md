@@ -10,12 +10,12 @@ and this project adheres to
 
 ### Changed
 
-- **Renamed the project to `roadmark`.** The crate, the library, and the
-  binary are all now `roadmark`; the command you invoke changes from
-  `roadmap …` to `roadmark …`. The `.roadmap/` source directory and the
-  generated `ROADMAP.md` keep their names. The GitHub repository is still
-  `bastien-gallay/roadmap-cli` until it is renamed, so install URLs are
-  unchanged, but the release artifacts are now named `roadmark`.
+- **Renamed the project to `roadmark`.** The crate, the library, the
+  binary, and the GitHub repository (`bastien-gallay/roadmark`) are all now
+  `roadmark`; the command you invoke changes from `roadmap …` to
+  `roadmark …`. The `.roadmap/` source directory and the generated
+  `ROADMAP.md` keep their names. The `roadmark`-named release artifacts
+  ship with the first release cut after the rename.
 
 ## [0.4.0] - 2026-07-12
 
@@ -91,7 +91,7 @@ Initial release.
 - Prebuilt binaries for 5 targets plus shell/powershell installers
   (cargo-dist).
 
-[0.4.0]: https://github.com/bastien-gallay/roadmap-cli/compare/v0.3.0...v0.4.0
-[0.3.0]: https://github.com/bastien-gallay/roadmap-cli/compare/v0.2.0...v0.3.0
-[0.2.0]: https://github.com/bastien-gallay/roadmap-cli/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/bastien-gallay/roadmap-cli/releases/tag/v0.1.0
+[0.4.0]: https://github.com/bastien-gallay/roadmark/compare/v0.3.0...v0.4.0
+[0.3.0]: https://github.com/bastien-gallay/roadmark/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/bastien-gallay/roadmark/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/bastien-gallay/roadmark/releases/tag/v0.1.0
