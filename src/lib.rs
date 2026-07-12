@@ -274,15 +274,27 @@ fn summary(body: &str) -> String {
 }
 
 /// Fold inline markdown in a single line down to plain text: `[text](url)` →
-/// `text`, drop code-span backticks and `*`/`_` emphasis markers, and collapse
-/// runs of whitespace to single spaces (also trimming the ends).
+/// `text`, drop code-span backticks, drop `*`/`_` **emphasis delimiters** while
+/// keeping them intraword (so `lint_str` / `MAX_SEGMENT_WORDS` identifiers
+/// survive), and collapse runs of whitespace to single spaces (trimming ends).
 fn clean_inline_markdown(line: &str) -> String {
-    let unlinked = strip_inline_links(line);
-    let no_marks: String = unlinked
-        .chars()
-        .filter(|c| !matches!(c, '`' | '*' | '_'))
-        .collect();
-    no_marks.split_whitespace().collect::<Vec<_>>().join(" ")
+    let chars: Vec<char> = strip_inline_links(line).chars().collect();
+    let mut out = String::with_capacity(chars.len());
+    for (i, &c) in chars.iter().enumerate() {
+        match c {
+            // Code-span delimiter: drop, keep the content.
+            '`' => {}
+            // A `*`/`_` flanked by alphanumerics on BOTH sides is an
+            // identifier char, not an emphasis delimiter — keep it; drop it
+            // otherwise (`*bold*`, `_em_`, `**strong**`).
+            '*' | '_'
+                if !(i > 0
+                    && chars[i - 1].is_alphanumeric()
+                    && chars.get(i + 1).is_some_and(|n| n.is_alphanumeric())) => {}
+            _ => out.push(c),
+        }
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// Replace `[text](url)` spans with their `text`, leaving everything else
@@ -304,15 +316,15 @@ fn strip_inline_links(s: &str) -> String {
 }
 
 /// If a `[text](url)` link starts at `chars[start]`, return its `text` slice
-/// and the index just past the closing `)`. Otherwise `None`.
+/// and the index just past the closing `)`. Otherwise `None`. The text ends at
+/// the first `]` immediately followed by `(`, so brackets inside the text
+/// (`[see [ref]](url)`) don't cut it short.
 fn link_at(chars: &[char], start: usize) -> Option<(&[char], usize)> {
     if chars.get(start) != Some(&'[') {
         return None;
     }
-    let close = (start + 1..chars.len()).find(|&j| chars[j] == ']')?;
-    if chars.get(close + 1) != Some(&'(') {
-        return None;
-    }
+    let close = (start + 1..chars.len())
+        .find(|&j| chars[j] == ']' && chars.get(j + 1) == Some(&'('))?;
     let paren = (close + 2..chars.len()).find(|&j| chars[j] == ')')?;
     Some((&chars[start + 1..close], paren + 1))
 }
@@ -684,6 +696,27 @@ type = \"feature\"\n";
         assert!(s.chars().count() <= 122);
         // Round-trips as valid UTF-8 (no mid-char split would have panicked).
         assert!(String::from_utf8(s.into_bytes()).is_ok());
+    }
+
+    #[test]
+    fn summary_preserves_snake_case_identifiers() {
+        // Underscores/asterisks inside a word are identifier chars, not
+        // emphasis — they must survive the strip.
+        let body = "Doctests for `Engine::with_profile` and `Engine::lint_str`, \
+                    plus MAX_SEGMENT_WORDS.";
+        let s = summary(body);
+        assert!(s.contains("Engine::with_profile"), "got {s:?}");
+        assert!(s.contains("Engine::lint_str"), "got {s:?}");
+        assert!(s.contains("MAX_SEGMENT_WORDS"), "got {s:?}");
+        assert!(!s.contains('`'), "backticks remain: {s:?}");
+    }
+
+    #[test]
+    fn summary_link_text_may_contain_brackets() {
+        // The `](` boundary closes the link text, not the first `]`, so
+        // brackets inside the text are preserved as plain text.
+        let s = summary("See [the [inner] note](https://x) here.");
+        assert_eq!(s, "See the [inner] note here.");
     }
 
     #[test]
