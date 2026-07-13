@@ -11,6 +11,22 @@ readme = "README.md"
 keywords = ["roadmap", "cli", "markdown", "generator"]
 categories = ["command-line-utilities"]
 
+# Ship only what a consumer of the crate needs: sources, the license pair,
+# the README (rendered on crates.io) and the changelog. Everything else
+# (CI config, .roadmap/ dogfood tree, examples, docs, test fixtures, dist
+# config) is dev/infra weight and stays out of the published tarball.
+# Patterns are gitignore-style: a leading `/` anchors to the package root
+# so a bare name (e.g. README.md) can't also match a nested file such as
+# .personal/README.md. `include` overrides .gitignore, so anchoring matters.
+include = [
+    "/src/**/*.rs",
+    "/Cargo.toml",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/LICENSE-MIT",
+    "/LICENSE-APACHE",
+]
+
 [[bin]]
 name = "roadmark"
 path = "src/main.rs"
