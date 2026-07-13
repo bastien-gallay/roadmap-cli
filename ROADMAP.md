@@ -16,7 +16,6 @@
 | [F-crates-io](#f-crates-io) | chore | — | S | release, docs | next | ☐ | Later | Publish roadmark to crates.io so it installs with cargo install roadmark, and add the crates.io version badge to the … |
 | [F-validate-action](#f-validate-action) | feature | differentiator | M | release, docs | next | ☐ | Later | Ship a reusable GitHub Action that runs roadmark validate, so any repo can gate its roadmap in CI and display a … |
 | [F-init](#f-init) | feature | enabler | S | cli, docs | later | ☐ | Later | roadmark init scaffolds a starter .roadmap/ tree (config.toml with commented field declarations plus one example … |
-| [F-rmk-alias](#f-rmk-alias) | feature | polish | S | cli | parked | ☐ | Later | Brainstorm: expose a short rmk alias for the roadmark binary so the three verbs (rmk add\|generate\|validate) are quicker … |
 | [F-roadmark-dir-rename](#f-roadmark-dir-rename) | chore | — | M | core, cli | parked | ☐ | Later | Brainstorm: rename the source directory .roadmap/ → .roadmark/ for brand coherence. Breaking for existing users; would … |
 
 ## Details
@@ -84,10 +83,6 @@ Ship a reusable GitHub Action that runs `roadmark validate`, so any repo can gat
 ### <a id="f-init"></a>F-init
 
 `roadmark init` scaffolds a starter `.roadmap/` tree (config.toml with commented field declarations plus one example feature) in a new project.
-
-### <a id="f-rmk-alias"></a>F-rmk-alias
-
-Brainstorm: expose a short `rmk` alias for the `roadmark` binary so the three verbs (`rmk add|generate|validate`) are quicker to type. Open question: second binary, shell alias in docs, or nothing.
 
 ### <a id="f-roadmark-dir-rename"></a>F-roadmark-dir-rename
 
