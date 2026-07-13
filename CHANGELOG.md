@@ -8,6 +8,13 @@ and this project adheres to
 
 ## [0.5.0] - 2026-07-12
 
+### Added
+
+- **First release published to crates.io** — install with
+  `cargo install roadmark`. The published crate is trimmed via an
+  `include` allowlist to sources, README, changelog, and the license
+  pair.
+
 ### Changed
 
 - **Renamed the project to `roadmark`.** The crate, the library, the

@@ -1,5 +1,5 @@
 # Bucket order for sorting and section emission. Earliest cycle first.
-versions = ["v0.1", "v0.2", "v0.3", "v0.4", "Later"]
+versions = ["v0.1", "v0.2", "v0.3", "v0.4", "v0.5", "Later"]
 
 title = "roadmark — Roadmap"
 
