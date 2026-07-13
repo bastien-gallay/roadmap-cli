@@ -6,7 +6,7 @@ area = ["release", "docs"]
 horizon = "shipped"
 status = "done"
 target = ["v0.5"]
-shipped = { version = "v0.5.0", date = "2026-07-13" }
+shipped = { version = "v0.5.0", date = "2026-07-12" }
 shipped_order = 8
 +++
 

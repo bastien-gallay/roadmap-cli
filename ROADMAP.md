@@ -75,7 +75,7 @@ Shipped in v0.4.0 (2026-07-12).
 
 ### <a id="f-crates-io"></a>F-crates-io
 
-Shipped in v0.5.0 (2026-07-13).
+Shipped in v0.5.0 (2026-07-12).
 
 Published `roadmark` to crates.io — it now installs with `cargo install roadmark` — and added the crates.io version badge to the README. The published crate is trimmed to sources, README, changelog, and the license pair via an `include` allowlist.
 
