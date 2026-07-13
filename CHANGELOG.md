@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Automated crates.io publishing from CI via Trusted Publishing
+  (OIDC).** Pushing a `v<semver>` tag now publishes the crate with no
+  long-lived token stored anywhere: the dist-generated release workflow
+  runs a custom publish job that mints an ephemeral crates.io token per
+  run (`rust-lang/crates-io-auth-action`) and runs `cargo publish`. This
+  replaces the manual `cargo login` / `cargo publish` step. Requires a
+  one-time Trusted Publisher config on crates.io.
+
 ## [0.5.0] - 2026-07-12
 
 ### Added
