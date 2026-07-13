@@ -14,10 +14,10 @@
 | [F-schema-v2](#f-schema-v2) | feature | differentiator | L | core | shipped | ✅ | v0.2 | Config-owned field taxonomies: type/class/effort/area/horizon/severity values are declared per-project in config.toml … |
 | [F-rename](#f-rename) | feature | table-stakes | M | cli, core | shipped | ✅ | v0.4 | roadmark rename: rename a feature id, move its file, and rewrite cross-references so anchors stay consistent. |
 | [F-crates-io](#f-crates-io) | chore | — | S | release, docs | shipped | ✅ | v0.5 | Published roadmark to crates.io — it now installs with cargo install roadmark — and added the crates.io version badge … |
+| [F-ci-publish](#f-ci-publish) | chore | — | M | release | shipped | ✅ | v0.5 | Automate the crates.io publish from CI via Trusted Publishing (OIDC), so a v<semver> tag ships the crate with no … |
 | [F-validate-action](#f-validate-action) | feature | differentiator | M | release, docs | next | ☐ | Later | Ship a reusable GitHub Action that runs roadmark validate, so any repo can gate its roadmap in CI and display a … |
 | [F-init](#f-init) | feature | enabler | S | cli, docs | later | ☐ | Later | roadmark init scaffolds a starter .roadmap/ tree (config.toml with commented field declarations plus one example … |
 | [F-roadmark-dir-rename](#f-roadmark-dir-rename) | chore | — | M | core, cli | parked | ☐ | Later | Rename the source directory .roadmap/ → .roadmark/ for brand coherence. Deferred and low priority while usage stays … |
-| [F-ci-publish](#f-ci-publish) | chore | — | M | release | next | ✅ | Later | Automate the crates.io publish from CI via Trusted Publishing (OIDC), so a v<semver> tag ships the crate with no … |
 
 ## Details
 
@@ -79,6 +79,14 @@ Shipped in v0.5.0 (2026-07-12).
 
 Published `roadmark` to crates.io — it now installs with `cargo install roadmark` — and added the crates.io version badge to the README. The published crate is trimmed to sources, README, changelog, and the license pair via an `include` allowlist.
 
+### <a id="f-ci-publish"></a>F-ci-publish
+
+Shipped in v0.5.1 (2026-07-13).
+
+Automate the crates.io publish from CI via Trusted Publishing (OIDC), so a `v<semver>` tag ships the crate with no long-lived token stored anywhere — GitHub Actions authenticates to crates.io per-run and receives an ephemeral token. Removes the manual `cargo login` / `cargo publish` step.
+
+Wired as a dist custom publish job (`publish-jobs = ["./publish-crates-io"]`): the dist-generated `release.yml` calls `.github/workflows/publish-crates-io.yml` after a successful `host`, dist grants it `id-token: write`, and `rust-lang/crates-io-auth-action` mints the ephemeral token for `cargo publish`. First proven by the v0.5.1 release, which published to crates.io through this path. Requires a one-time Trusted Publisher config on crates.io (repo `bastien-gallay/roadmark`, workflow `release.yml` — the OIDC JWT names the entry-point workflow, not the reusable `publish-crates-io.yml` it calls).
+
 ### <a id="f-validate-action"></a>F-validate-action
 
 Ship a reusable GitHub Action that runs `roadmark validate`, so any repo can gate its roadmap in CI and display a `roadmap: valid` badge — the badge is the distribution loop: every repo that shows it advertises the tool.
@@ -90,9 +98,3 @@ Ship a reusable GitHub Action that runs `roadmark validate`, so any repo can gat
 ### <a id="f-roadmark-dir-rename"></a>F-roadmark-dir-rename
 
 Rename the source directory `.roadmap/` → `.roadmark/` for brand coherence. Deferred and low priority while usage stays personal. If ever done, ship it non-breaking (option B): default to `.roadmark/`, fall back to `.roadmap/` with a deprecation warning — targeted at a future v1.0, not before. `.roadmap/` is arguably clearer and stays consistent with the `ROADMAP.md` output, so this may never be worth the churn.
-
-### <a id="f-ci-publish"></a>F-ci-publish
-
-Automate the crates.io publish from CI via Trusted Publishing (OIDC), so a `v<semver>` tag ships the crate with no long-lived token stored anywhere — GitHub Actions authenticates to crates.io per-run and receives an ephemeral token. Removes the manual `cargo login` / `cargo publish` step.
-
-Wired as a dist custom publish job (`publish-jobs = ["./publish-crates-io"]`): the dist-generated `release.yml` calls `.github/workflows/publish-crates-io.yml` after a successful `host`, dist grants it `id-token: write`, and `rust-lang/crates-io-auth-action` mints the ephemeral token for `cargo publish`. Kept `next` (not `shipped`) until a release actually publishes through this path; requires a one-time Trusted Publisher config on crates.io (repo `bastien-gallay/roadmark`, workflow `release.yml` — the OIDC JWT names the entry-point workflow, not the reusable `publish-crates-io.yml` it calls).
