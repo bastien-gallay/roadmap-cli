@@ -7,7 +7,10 @@
 #
 # One-time setup on crates.io (Settings -> Trusted Publishing) for the
 # `roadmark` crate: repository `bastien-gallay/roadmark`, workflow
-# `publish-crates-io.yml`.
+# `release.yml`. The OIDC JWT's `workflow` claim is the entry-point
+# workflow GitHub launched (release.yml, triggered by the tag), NOT this
+# reusable workflow that release.yml calls via `uses:` — so crates.io
+# must be configured with `release.yml`, not `publish-crates-io.yml`.
 name: Publish to crates.io
 
 on:
