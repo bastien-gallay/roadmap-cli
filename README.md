@@ -1,16 +1,14 @@
 # roadmark
 
 [![CI](https://github.com/bastien-gallay/roadmark/actions/workflows/ci.yml/badge.svg)](https://github.com/bastien-gallay/roadmark/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/roadmark.svg)](https://crates.io/crates/roadmark)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
 **Your roadmap as code — compiled, versioned, and validated in CI, so it
 never rots.**
 
 > **Naming:** the crate, the binary, and the GitHub repository
-> (`bastien-gallay/roadmark`) are all `roadmark`. The `roadmark`-named
-> release artifacts ship with the first release cut after the rename;
-> until then, install with `cargo install --git …` or from a local
-> checkout.
+> (`bastien-gallay/roadmark`) are all `roadmark`.
 
 ---
 
@@ -43,7 +41,13 @@ level, with a validation guarantee.
 
 ## Install
 
-Prebuilt binaries (macOS, Linux, Windows — see the
+From crates.io:
+
+```sh
+cargo install roadmark
+```
+
+Or grab a prebuilt binary (macOS, Linux, Windows — see the
 [latest release](https://github.com/bastien-gallay/roadmark/releases/latest)):
 
 ```sh
@@ -55,7 +59,7 @@ curl --proto '=https' --tlsv1.2 -LsSf \
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/bastien-gallay/roadmark/releases/latest/download/roadmark-installer.ps1 | iex"
 ```
 
-Or with cargo, from the Git repo or a local checkout:
+Or build from the Git repo or a local checkout:
 
 ```sh
 cargo install --git https://github.com/bastien-gallay/roadmark

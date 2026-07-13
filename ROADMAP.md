@@ -13,7 +13,8 @@
 | [F-crlf-parsing](#f-crlf-parsing) | fix | major | S | core | shipped | ✅ | v0.1 | CRLF-authored feature files parse correctly (Windows checkouts turned +++ fences into +++\r and broke … |
 | [F-schema-v2](#f-schema-v2) | feature | differentiator | L | core | shipped | ✅ | v0.2 | Config-owned field taxonomies: type/class/effort/area/horizon/severity values are declared per-project in config.toml … |
 | [F-rename](#f-rename) | feature | table-stakes | M | cli, core | shipped | ✅ | v0.4 | roadmark rename: rename a feature id, move its file, and rewrite cross-references so anchors stay consistent. |
-| [F-crates-io](#f-crates-io) | chore | — | S | release, docs | next | ☐ | Later | Publish roadmark to crates.io so it installs with cargo install roadmark, and add the crates.io version badge to the … |
+| [F-crates-io](#f-crates-io) | chore | — | S | release, docs | shipped | ✅ | v0.5 | Published roadmark to crates.io — it now installs with cargo install roadmark — and added the crates.io version badge … |
+| [F-ci-publish](#f-ci-publish) | chore | — | M | release | next | ☐ | Later | Automate the crates.io publish from CI via Trusted Publishing (OIDC), so a v<semver> tag ships the crate with no … |
 | [F-validate-action](#f-validate-action) | feature | differentiator | M | release, docs | next | ☐ | Later | Ship a reusable GitHub Action that runs roadmark validate, so any repo can gate its roadmap in CI and display a … |
 | [F-init](#f-init) | feature | enabler | S | cli, docs | later | ☐ | Later | roadmark init scaffolds a starter .roadmap/ tree (config.toml with commented field declarations plus one example … |
 | [F-roadmark-dir-rename](#f-roadmark-dir-rename) | chore | — | M | core, cli | parked | ☐ | Later | Rename the source directory .roadmap/ → .roadmark/ for brand coherence. Deferred and low priority while usage stays … |
@@ -74,7 +75,13 @@ Shipped in v0.4.0 (2026-07-12).
 
 ### <a id="f-crates-io"></a>F-crates-io
 
-Publish `roadmark` to crates.io so it installs with `cargo install roadmark`, and add the crates.io version badge to the README.
+Shipped in v0.5.0 (2026-07-13).
+
+Published `roadmark` to crates.io — it now installs with `cargo install roadmark` — and added the crates.io version badge to the README. The published crate is trimmed to sources, README, changelog, and the license pair via an `include` allowlist.
+
+### <a id="f-ci-publish"></a>F-ci-publish
+
+Automate the crates.io publish from CI via Trusted Publishing (OIDC), so a `v<semver>` tag ships the crate with no long-lived token stored anywhere — GitHub Actions authenticates to crates.io per-run and receives an ephemeral token. Removes the manual `cargo login` / `cargo publish` step.
 
 ### <a id="f-validate-action"></a>F-validate-action
 
