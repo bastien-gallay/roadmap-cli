@@ -16,7 +16,7 @@
 | [F-crates-io](#f-crates-io) | chore | — | S | release, docs | next | ☐ | Later | Publish roadmark to crates.io so it installs with cargo install roadmark, and add the crates.io version badge to the … |
 | [F-validate-action](#f-validate-action) | feature | differentiator | M | release, docs | next | ☐ | Later | Ship a reusable GitHub Action that runs roadmark validate, so any repo can gate its roadmap in CI and display a … |
 | [F-init](#f-init) | feature | enabler | S | cli, docs | later | ☐ | Later | roadmark init scaffolds a starter .roadmap/ tree (config.toml with commented field declarations plus one example … |
-| [F-roadmark-dir-rename](#f-roadmark-dir-rename) | chore | — | M | core, cli | parked | ☐ | Later | Brainstorm: rename the source directory .roadmap/ → .roadmark/ for brand coherence. Breaking for existing users; would … |
+| [F-roadmark-dir-rename](#f-roadmark-dir-rename) | chore | — | M | core, cli | parked | ☐ | Later | Rename the source directory .roadmap/ → .roadmark/ for brand coherence. Deferred and low priority while usage stays … |
 
 ## Details
 
@@ -86,4 +86,4 @@ Ship a reusable GitHub Action that runs `roadmark validate`, so any repo can gat
 
 ### <a id="f-roadmark-dir-rename"></a>F-roadmark-dir-rename
 
-Brainstorm: rename the source directory `.roadmap/` → `.roadmark/` for brand coherence. Breaking for existing users; would need a compatibility shim or a migration path. Open question: worth the churn?
+Rename the source directory `.roadmap/` → `.roadmark/` for brand coherence. Deferred and low priority while usage stays personal. If ever done, ship it non-breaking (option B): default to `.roadmark/`, fall back to `.roadmap/` with a deprecation warning — targeted at a future v1.0, not before. `.roadmap/` is arguably clearer and stays consistent with the `ROADMAP.md` output, so this may never be worth the churn.
